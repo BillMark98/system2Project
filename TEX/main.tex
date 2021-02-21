@@ -8,7 +8,10 @@
 \newcommand{\minus}{\scalebox{0.75}[1.0]{$-$}}
 \graphicspath{ {./images/} }
 
-
+\newcommand{\gera}{\"{a}}
+\newcommand{\gero}{\"{o}}
+\newcommand{\geru}{\"{u}}
+% \newcommand{\gers}{}
 \renewcommand{\contentsname}{Inhaltsverzeichnis}
 \begin{document}
 \begin{titlepage}
@@ -113,11 +116,29 @@ Die Frequenz des Signals folgt der Einstellung des Drehmomentes und kann durch d
 
 
 \section{Regelung der oberen Gleichgewichtslage}
-pHier folgt der Text für A2
-
-\subsection{Mathematische Herleitung der Regelparameter}\label{section:mathsDerive}
-Hier folgt der Text für A2.1
-
+\subsection{Beschreibung der Bewegung}
+\subsubsection{Differentialgleichungen}
+Wir wissen aus der Physik, dass
+\begin{equation}\label{eq:physics}
+  m \,l^2 \, \ddot{\theta} - m\,g\,l\,\sin{\theta} = \minus M
+\end{equation}
+wobei $m$ die Masse des Anh\gera ngers, $l$ die L\gera nge des Hebelarms, $g$ die Schwerebeschleunigung und $M$ der Drehmoment bezeichnet. Wir haben das Vorzeichen von $M$ so gew\gera hlt, dass es mit dem Vorzeichen von dem Wert zu dem \textbf{Arduino Continuous Servo Write} passt(siehe unten).\\
+\subsubsection{Linearisierung}
+Wir benutzen die Standardlinearisierung also $\sin{\theta} \approx \theta$ ist. \\
+Linearisierung liefert: 
+\begin{equation}\label{eq:linear}
+  m \,l^2 \, \ddot{\theta} - m\,g\,l\, \theta = \minus M
+\end{equation}
+\subsubsection{Laplace Transformation}
+Die Laplace-Transformation lautet dann:
+\begin{align}\label{eq:laplace}
+  m \,l^2 \, s^2 \theta(s) - m\,g\,l\, \theta(s) &= \minus M(s)\\
+  \Rightarrow \theta(s) &= \frac{\minus \frac{1}{ml^2}}{s^2 - \frac{g}{l}} M(s)
+\end{align}
+Die Polstellen sind gegeben durch $\pm \sqrt{\frac{g}{l}}$. 
+\subsubsection{Schwingverhalten}
+Da eine Polstelle einen positiven Realteil haben, wissen wir, dass das urspr\geru ngliche System nicht stabil ist.\\
+\subsection{Herleitung der Regelparameter}\label{section:mathsDerive}
 Da wir für die Steuerung von dem Motor nicht den genauen Wert von dem Drehmoment, sondern
 eine Zahl mit absoluten Betrag zwischen $0$ bis $90$ für den Block \textbf{Arduino Continuous Servo Write} benutzen 
 können, müssen wir noch den Drehmoment in obiger Formel umsetzen. Wir definieren diese Konstante als \textbf{torqueToMotor}.\\
@@ -128,23 +149,68 @@ Zu dem letzten Faktor $5$ haben empirisch gesetzt, damit die Steuerung gewünsch
 Wir benutzen jetzt den matlab Befehl \textbf{place}, um die gewünschte Eigenwerte zu erreichen.\\
 Für den weiteren Wert des Parameters in \ref{section:mathsDerive} setzen wir folgendes:
 \[
-  m = 0.4, \quad piConst = 3.1483;
+  m = 0.4, \quad piConst = 3.1483, l = 0.15
 \]
-Wir haben den wert von $\pi$ so gewählt, da wir gefunden haben, dass bei 
+Wir haben den Wert von $\pi$ so gewählt, da wir gefunden haben, dass bei 
 der oberen Gleichgewichtslage der Winkel, der den Motor Block misst, solchen
 Wert hat. \\ 
-Wir bekommen den Wert von $K$ mit $K1 = -66.3428$, und $K2 = -7.9347$. Damit haben wir die Übertragungsfunktion von offenen Regelkreis bestimmt.
+\subsubsection{Reglerparamter des Zustandsreglers}
+Wir f\geru hren den Vektor des Zustandsraums ein:
+\[
+ x := \begin{pmatrix}
+  \theta\\
+  \dot{\theta}
+\end{pmatrix}
+\]
+und die Gleichung \ref{eq:linear} umformt sich als Folgendes:
+\[
+\begin{pmatrix}
+  \theta\\
+  \dot{\theta}
+\end{pmatrix} ^{\prime}= 
+\begin{pmatrix}
+ 0 & 1 \\
+ \frac{g}{l} & 0
+\end{pmatrix}
+\begin{pmatrix}
+  \theta\\
+  \dot{\theta}
+\end{pmatrix} - 
+\begin{pmatrix}
+  0\\
+  \frac{T}{m\,l^2}
+\end{pmatrix} u
+\]
+Damit haben wir die Übertragungsfunktion von offenen Regelkreis bestimmt.
 \[
 	H(s) = (K1 + K2 \cdot s) \, \cdot \frac{\frac{T}{m\,l^2}}{s^2 - \frac{g}{l}}
 \]
-wobei, $T$ für die Konstante \textbf{torqueToMotor} steht. \\
-Die Phasenreserve der geschlossenen Regelkreises ist in (Figure \ref{fig:phaseMargin}) geplottet.
+wobei, $T$ für die Konstante \textbf{torqueToMotor} steht. $u$ ist der Wert f\geru r die Eingabe zu dem Block \textbf{Arduino Continuous Servo Write} ist.\\ 
+Sei jetzt $u = (K1, K2)x^{tr}$. Dann gilt nach Laplace Transformation:
+\[
+  \begin{pmatrix}
+    s & -1\\
+    -\frac{g}{l} - \frac{T}{m l^2} & s - \frac{T K2}{m l^2}
+   \end{pmatrix}
+\]
+dass die obige Matrix die Eigenwerte davon $5$ und $7$ besitzen. Also
+\begin{equation}\label{eq:k12}
+  s^2 - \frac{T K2}{ml^2}s - (\frac{g}{l} + \frac{TK1}{ml^2}) = 0
+\end{equation}
+Wir bekommen den Wert von $K$ mit $K1 = -66.3428$, und $K2 = -7.9347$. 
+\subsubsection{Eigenschaft des Zustandreglers}
+Da die Zustandregler die Form $(K1 + K2 s)\theta(s)$ hat, sehen wir dass es sich um eine PD-Regler handelt.
+\subsubsection{phase margin}
+Die Phasenreserve des geschlossenen Regelkreises ist in (Figure \ref{fig:phaseMargin}) geplottet.
 \begin{figure}[h]
 	\caption{Phasen Reserve von geschlossen Regelkreis}
 	\centering
 	\includegraphics[width=8cm]{phaseMargin}
 	\label{fig:phaseMargin}
 \end{figure}
+Wir haben einen positiven Phasenreserve gesehen also haben wir
+ein stabiles System.
+\subsubsection{Diskretisierung}
 Nun gilt laut Aufgabenstellung, dass $K2$ mit einer $PT1$ Element multipliziert wird. Also
 \[
 	H(s) = (K1 + \frac{K2 \cdot s}{1 + \tau \cdot s}) \, \cdot \frac{\frac{T}{m\,l^2}}{s^2 - \frac{g}{l}}\quad, \tau = 10^{-2}s
@@ -156,6 +222,19 @@ Durch die Transformation $s \mapsto \frac{z - 1}{T}$, mit $T = 10^{-2} s$, wir b
 \end{align*}
 Da laut Aufgabenstellung $T = \tau$ ist.
 \subsection{Implementierung der Regelung auf dem Arduino}
+Der Schaltplan ist im Figure \ref{fig:a239},\ref{fig:a24Sub} gezeigt.\\
+\begin{figure}[h]
+  \caption{gesamt Schaltplan}
+  \centering
+  \includegraphics[width=8cm]{images/a239.PNG}
+  \label{fig:a239}
+\end{figure}
+\begin{figure}[h]
+  \caption{PD-Regelung}
+  \centering
+  \includegraphics[width=8cm]{a24Sub1}
+  \label{fig:a24Sub}
+\end{figure}
 Wir untersuchen die Regelung auf dem Arduino infolge der in der Aufgabe gestellte Tabelle.\\
 Da wir nur $9$ Große Unterlagscheiben haben, haben wir bis Konfiguration $5$ gearbeitet. \\
 Die geneauere Beschreibung befindet sich in der folgenden Tabelle. \\
@@ -176,34 +255,83 @@ Die geneauere Beschreibung befindet sich in der folgenden Tabelle. \\
     \hline
   \end{tabular}
 \end{center}
+\subsection{station\gera re Fehler}
+Wir haben in der oberen Tabelle gesehen, dass es immer station\gera re Fehler auftreten. Grund daf\geru r kann m\gero glich sein, dass die Reibung drinnen in dem Motor verhindert, diese kleine Bewegung zu steuern. Ein anderer Grund ist wegen des Fehlers die auftreten waehrend der Linearisierung und Diskretisierung. Wir haben gesehen, dass am Ende das Pendel immer nur wenig hin und her wackelt aber nicht zu einer kompletten Ruhelage, also kann sein, dass der Schrittweite, die das Signal abgetastet wird nicht fein genug ist. \\
+Wir haben auch versucht, vor dem Regler ein Integrator zu integerieren aber hilft dies auch nicht. Leider muessen wir uns mit dem stationaeren Fehler leben.
 
 \section{Aufschwingen des Pendels}
+\subsection{Aufbauen der Regelung}
 Um das Pendel aus der unteren Gleichgewichtslage zu der oberen Gleichgewichtslage zu führen,
-benutzen wir zu erst den bereitgestellten bang-bang Control Block, damit wir den Hebelarm bis zu
+benutzen wir zuerst den bereitgestellten bang-bang Control Block, damit wir den Hebelarm bis zu
 einem Winkel hochheben, so dass wir mit der vorher gebildeten Regelung das Pendel zur oberen Gleichgewichtslage
 steuern können. \\
 Wir führen hier ein Switch ein. Der entscheidet den Winkel zwischen der der Motor Block misst (der aktuelle Winkel) und
 der Sollwert (3.1483, siehe section \ref{section:reglerImplement}). Falls der Fehler unter einer Grenze liegt, dann nutzen wir die PD-Regelung
-um das System weiter zu steuern. Hier unten ist ein Screenshots von dem Schaltplan.
+um das System weiter zu steuern.  Wir haben w\gera hrend des Experiments entdeckt, dass bei Nullpunktdurchgang wegen des abrupter \"{A}nderung von $0$ bis $2 \pi$ \gera durch Interpolation ein Wert sehr nahe bei $\pi$ liegen, also in diesem Fall falsch die PD-Regelung starten wird. Deswegen haben wir eine Verz\gero gerungsglied hinzugef\geru gt um dieses Problem zu beheben. Durch die Verz\gero gerung vergleichen wir den aktuellen Winkel mit dem Wert vor $10$ abgetasteten Wert. Wenn der abrupt \gera ndert, wissen wir dass ein Nullpunktdurchgang auftritt also verwerfen diese Situation, ansonsten ist starten wir die PD-Regelung.(siehe den Schaltplan in Section \ref{section:last})
+%\bibliographystyle{plain}
+%\bibliography{references}
+\subsection{Bereich der PD-Regelung}
+Wir haben empirisch bestimmt, dass der Winkel zwischen 0.3 bis 2 ist.
+\subsection{maxTorque und minTorque}
+Das haben wir in der Aufgabe 2.2 schon bestimmt.
+\subsection{Verhalten des Systems}\label{section:last}
+Hier unten ist ein Screenshots von dem Schaltplan.
 \begin{figure}[h]
-	\caption{Schaltplan vom Aufschwingen}
-	\centering
-	\includegraphics[width=10cm]{a24}
-	\label{fig:schaltplan24}
+  \caption{Schaltplan vom Aufschwingen}
+  \centering
+  \includegraphics[width=10cm]{a24}
+  \label{fig:schaltplan24}
 \end{figure}\\
 Für das Subsystem sieht der Schaltplan so aus.
 \begin{figure}[h]
-	\caption{switch Block}
-	\centering
-	\includegraphics[width=8cm]{a24switching}
-	\label{fig:switch}
+  \caption{switch Block}
+  \centering
+  \includegraphics[width=8cm]{switch}
+  \label{fig:switch}
 \end{figure}
 \begin{figure}[h]
-	\caption{PD-Regelung}
-	\centering
-	\includegraphics[width=8cm]{a24Sub1}
-	\label{fig:pdRegelung}
+  \caption{PD-Regelung}
+  \centering
+  \includegraphics[width=8cm]{a24Sub1}
+  \label{fig:pdRegelung}
+\end{figure}\\
+Bei der Durchf\geru hrung vom Experiment haben wir das folgende Ergebnis:
+% \begin{figure}[h]
+%   \caption{deriv}
+%   \centering
+%   \includegraphics[width=8cm]{images/radianSpeed.PNG}
+%   \label{fig:rSpeed}
+% \end{figure}
+% \begin{figure}[h]
+%   \caption{posRad}
+%   \centering
+%   \includegraphics[width=8cm]{images/Angle1.PNG}
+%   \label{fig:pdRegelung}
+% \end{figure}
+% \begin{figure}[h]
+%   \caption{switchSignal}
+%   \centering
+%   \includegraphics[width=8cm]{images/switchSignal.PNG}
+%   \label{fig:switchSignal}
+% \end{figure}
+\begin{figure}[h]
+  \centering
+  \begin{minipage}[b]{0.4\textwidth}
+    \includegraphics[width=\textwidth]{radianSpeed.PNG}
+    \caption{deriv}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[b]{0.4\textwidth}
+    \includegraphics[width=\textwidth]{Angle1.PNG}
+    \caption{posRad}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[b]{0.4\textwidth}
+    \includegraphics[width=\textwidth]{switchSignal.PNG}
+    \caption{switch signal}
+  \end{minipage}
 \end{figure}
-%\bibliographystyle{plain}
-%\bibliography{references}
+Wir sehen dass der Abschwingvorgang ziemlich kurz ist, danach 
+wird die PD-Regelung aufwirken und steuert das Pendel zur oberen
+Gleichgewichtslage.
 \end{document}
